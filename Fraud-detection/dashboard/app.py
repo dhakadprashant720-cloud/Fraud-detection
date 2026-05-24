@@ -23,7 +23,7 @@ amount_range = st.sidebar.slider("Transaction Amount ($)", 0, int(df["Transactio
 df_filtered = df[df["RiskTier"].isin(risk_filter) & df["TransactionAmt"].between(amount_range[0], amount_range[1])]
 
 if page == "📊 Overview":
-    st.title("📊 Fraud Detection — Overview Dashboard")
+    st.title("📊 Fraud Detection - Overview Dashboard")
     st.markdown("---")
 
     col1, col2, col3, col4 = st.columns(4)
