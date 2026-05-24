@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
 
 st.set_page_config(page_title="Fraud Detection Dashboard", page_icon="🔍", layout="wide")
 
@@ -10,14 +9,7 @@ def load_data():
     df = pd.read_csv("Fraud-detection/data/sample_results.csv")
     return df
 
-@st.cache_resource
-def load_model():
-    with open("Fraud-detection/dashboard/model.pkl", "rb") as f:
-        model = pickle.load(f)
-    return model
-
-df    = load_data()
-model = load_model()
+df = load_data()
 
 st.sidebar.title("🔍 Fraud Detection")
 st.sidebar.markdown("**By: Prashant Dhakad**")
@@ -52,11 +44,12 @@ if page == "📊 Overview":
     st.bar_chart(tier_counts.set_index("RiskTier"))
 
     st.subheader("Fraud Probability by Hour of Day")
-    hour_data = df_filtered.groupby("HourOfDay")["FraudProbability"].mean().reset_index()
-    st.bar_chart(hour_data.set_index("HourOfDay"))
+    hour_data = df_filtered.groupby("HourOfDay")["FraudProbability"].mean()
+    st.bar_chart(hour_data)
 
     st.subheader("Transaction Amount Distribution")
-    st.bar_chart(df_filtered["TransactionAmt"].value_counts().sort_index())
+    amt_data = df_filtered.groupby(pd.cut(df_filtered["TransactionAmt"], bins=20))["TransactionAmt"].count()
+    st.bar_chart(amt_data)
 
     st.subheader("📋 Risk Tier Summary")
     summary = df_filtered.groupby("RiskTier").agg(
