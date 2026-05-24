@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+import pickle
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -10,12 +10,13 @@ st.set_page_config(page_title="Fraud Detection Dashboard", page_icon="🔍", lay
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/sample_results.csv")
+    df = pd.read_csv("Fraud-detection/data/sample_results.csv")
     return df
 
 @st.cache_resource
 def load_model():
-    model = joblib.load("dashboard/model.pkl")
+    with open("Fraud-detection/dashboard/model.pkl", "rb") as f:
+        model = pickle.load(f)
     return model
 
 df    = load_data()
@@ -124,13 +125,13 @@ elif page == "🧠 SHAP Explainer":
                 st.markdown("---")
                 if risk == "Critical Risk":
                     st.error("🔴 CRITICAL RISK")
-                    st.markdown(f"Is transaction mein fraud probability bahut zyada hai ({prob:.2%}). Amount ${amt} suspicious hai aur time {int(hour)}:00 unusual hai. **Action: Block karo.**")
+                    st.markdown(f"Fraud probability bahut zyada hai ({prob:.2%}). Amount ${amt} suspicious hai, time {int(hour)}:00 unusual hai. **Action: Block karo.**")
                 elif risk == "Suspicious":
                     st.warning("🟡 SUSPICIOUS")
                     st.markdown(f"Fraud probability medium hai ({prob:.2%}). Kuch features suspicious hain. **Action: OTP verification bhejo.**")
                 else:
                     st.success("🟢 CLEAR")
-                    st.markdown(f"Fraud probability bahut kam hai ({prob:.2%}). Transaction bilkul normal lagti hai. **Action: Allow karo.**")
+                    st.markdown(f"Fraud probability bahut kam hai ({prob:.2%}). Transaction normal lagti hai. **Action: Allow karo.**")
             else:
                 st.warning("Transaction ID not found.")
         except:
