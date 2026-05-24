@@ -1,10 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Fraud Detection Dashboard", page_icon="🔍", layout="wide")
 
@@ -33,6 +31,9 @@ amount_range = st.sidebar.slider("Transaction Amount ($)", 0, int(df["Transactio
 
 df_filtered = df[df["RiskTier"].isin(risk_filter) & df["TransactionAmt"].between(amount_range[0], amount_range[1])]
 
+# ==========================================
+# PAGE 1 — OVERVIEW
+# ==========================================
 if page == "📊 Overview":
     st.title("📊 Fraud Detection — Overview Dashboard")
     st.markdown("---")
@@ -50,23 +51,50 @@ if page == "📊 Overview":
     st.markdown("---")
 
     col_a, col_b = st.columns(2)
-    with col_a:
-        tier_counts = df_filtered["RiskTier"].value_counts()
-        fig = go.Figure(go.Pie(labels=tier_counts.index, values=tier_counts.values, hole=0.5, marker_colors=["#e74c3c","#f39c12","#2ecc71"]))
-        fig.update_layout(title="Risk Tier Distribution")
-        st.plotly_chart(fig, use_container_width=True)
-    with col_b:
-        hour_data = df_filtered.groupby("HourOfDay")["FraudProbability"].mean().reset_index()
-        fig2 = px.bar(hour_data, x="HourOfDay", y="FraudProbability", title="Fraud Probability by Hour", color="FraudProbability", color_continuous_scale="RdYlGn_r")
-        st.plotly_chart(fig2, use_container_width=True)
 
-    fig3 = px.histogram(df_filtered, x="TransactionAmt", color="RiskTier", nbins=50, log_y=True, title="Transaction Amount Distribution", color_discrete_map={"Critical Risk":"#e74c3c","Suspicious":"#f39c12","Clear":"#2ecc71"})
-    st.plotly_chart(fig3, use_container_width=True)
+    with col_a:
+        st.subheader("Risk Tier Distribution")
+        tier_counts = df_filtered["RiskTier"].value_counts()
+        fig1, ax1 = plt.subplots(figsize=(5, 4))
+        ax1.pie(tier_counts, labels=tier_counts.index, autopct="%1.1f%%",
+                colors=["#e74c3c", "#f39c12", "#2ecc71"], wedgeprops={"width": 0.5})
+        ax1.set_title("Risk Tier Donut")
+        st.pyplot(fig1)
+        plt.close()
+
+    with col_b:
+        st.subheader("Fraud Probability by Hour")
+        hour_data = df_filtered.groupby("HourOfDay")["FraudProbability"].mean()
+        fig2, ax2 = plt.subplots(figsize=(5, 4))
+        ax2.bar(hour_data.index, hour_data.values, color="coral")
+        ax2.set_xlabel("Hour of Day")
+        ax2.set_ylabel("Avg Fraud Probability")
+        ax2.set_title("Fraud by Hour")
+        st.pyplot(fig2)
+        plt.close()
+
+    st.subheader("Transaction Amount Distribution")
+    fig3, ax3 = plt.subplots(figsize=(10, 4))
+    for tier, color in [("Critical Risk","#e74c3c"), ("Suspicious","#f39c12"), ("Clear","#2ecc71")]:
+        subset = df_filtered[df_filtered["RiskTier"] == tier]["TransactionAmt"]
+        ax3.hist(subset, bins=50, alpha=0.6, label=tier, color=color, log=True)
+    ax3.set_xlabel("Transaction Amount")
+    ax3.set_ylabel("Count (log)")
+    ax3.legend()
+    st.pyplot(fig3)
+    plt.close()
 
     st.subheader("📋 Risk Tier Summary")
-    summary = df_filtered.groupby("RiskTier").agg(Count=("TransactionAmt","count"), AvgAmt=("TransactionAmt","mean"), AvgProb=("FraudProbability","mean")).round(2).reset_index()
+    summary = df_filtered.groupby("RiskTier").agg(
+        Count=("TransactionAmt","count"),
+        AvgAmt=("TransactionAmt","mean"),
+        AvgProb=("FraudProbability","mean")
+    ).round(2).reset_index()
     st.dataframe(summary, use_container_width=True)
 
+# ==========================================
+# PAGE 2 — TRANSACTION EXPLORER
+# ==========================================
 elif page == "🔎 Transaction Explorer":
     st.title("🔎 Transaction Explorer")
     st.markdown("---")
@@ -80,7 +108,7 @@ elif page == "🔎 Transaction Explorer":
                 risk = result["RiskTier"].values[0]
                 amt  = result["TransactionAmt"].values[0]
                 hour = result["HourOfDay"].values[0]
-                c1,c2,c3,c4 = st.columns(4)
+                c1, c2, c3, c4 = st.columns(4)
                 c1.metric("Risk Tier", risk)
                 c2.metric("Fraud Probability", f"{prob:.4f}")
                 c3.metric("Amount", f"${amt}")
@@ -98,13 +126,25 @@ elif page == "🔎 Transaction Explorer":
 
     st.markdown("---")
     st.subheader("📋 All Transactions")
-    sort_col = st.selectbox("Sort By", ["FraudProbability","TransactionAmt","HourOfDay"])
+    sort_col = st.selectbox("Sort By", ["FraudProbability", "TransactionAmt", "HourOfDay"])
     sort_asc = st.checkbox("Ascending", value=False)
     st.dataframe(df_filtered.sort_values(sort_col, ascending=sort_asc).head(200), use_container_width=True)
 
-    fig4 = px.scatter(df_filtered.sample(min(1000,len(df_filtered)),random_state=42), x="HourOfDay", y="TransactionAmt", color="FraudProbability", color_continuous_scale="RdYlGn_r", title="Amount vs Hour — Color = Fraud Probability", opacity=0.6)
-    st.plotly_chart(fig4, use_container_width=True)
+    st.subheader("Amount vs Hour of Day")
+    fig4, ax4 = plt.subplots(figsize=(10, 5))
+    sample = df_filtered.sample(min(1000, len(df_filtered)), random_state=42)
+    sc = ax4.scatter(sample["HourOfDay"], sample["TransactionAmt"],
+                     c=sample["FraudProbability"], cmap="RdYlGn_r", alpha=0.5, s=10)
+    plt.colorbar(sc, ax=ax4, label="Fraud Probability")
+    ax4.set_xlabel("Hour of Day")
+    ax4.set_ylabel("Transaction Amount")
+    ax4.set_title("Amount vs Hour — Color = Fraud Probability")
+    st.pyplot(fig4)
+    plt.close()
 
+# ==========================================
+# PAGE 3 — SHAP EXPLAINER
+# ==========================================
 elif page == "🧠 SHAP Explainer":
     st.title("🧠 SHAP Explainer")
     st.markdown("---")
@@ -118,7 +158,7 @@ elif page == "🧠 SHAP Explainer":
                 risk = result["RiskTier"].values[0]
                 amt  = result["TransactionAmt"].values[0]
                 hour = result["HourOfDay"].values[0]
-                c1,c2,c3 = st.columns(3)
+                c1, c2, c3 = st.columns(3)
                 c1.metric("Fraud Probability", f"{prob:.4f}")
                 c2.metric("Amount", f"${amt}")
                 c3.metric("Hour", f"{int(hour)}:00")
@@ -136,14 +176,3 @@ elif page == "🧠 SHAP Explainer":
                 st.warning("Transaction ID not found.")
         except:
             st.error("Valid numeric Transaction ID daalo.")
-
-    st.markdown("---")
-    st.subheader("ℹ️ Model Info")
-    st.markdown("""
-    | Step | Description |
-    |------|-------------|
-    | Model | LightGBM (best performer) |
-    | Imbalance | SMOTE applied |
-    | Features | 3 engineered features |
-    | Explainability | SHAP values |
-    """)
