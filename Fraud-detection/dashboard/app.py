@@ -49,7 +49,11 @@ if page == "📊 Overview":
 
     st.subheader("Transaction Amount Distribution")
     amt_data = df_filtered.groupby(pd.cut(df_filtered["TransactionAmt"], bins=20))["TransactionAmt"].count()
-    st.bar_chart(amt_data)
+    amt_df = df_filtered[["TransactionAmt"]].copy()
+    amt_df["bin"] = pd.cut(amt_df["TransactionAmt"], bins=20).astype(str)
+    amt_counts = amt_df.groupby("bin")["TransactionAmt"].count().reset_index()
+    amt_counts.columns = ["Amount Range", "Count"]
+    st.bar_chart(amt_counts.set_index("Amount Range"))
 
     st.subheader("📋 Risk Tier Summary")
     summary = df_filtered.groupby("RiskTier").agg(
