@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Fraud Detection Dashboard", page_icon="🔍", layout="wide")
 
@@ -31,9 +30,6 @@ amount_range = st.sidebar.slider("Transaction Amount ($)", 0, int(df["Transactio
 
 df_filtered = df[df["RiskTier"].isin(risk_filter) & df["TransactionAmt"].between(amount_range[0], amount_range[1])]
 
-# ==========================================
-# PAGE 1 — OVERVIEW
-# ==========================================
 if page == "📊 Overview":
     st.title("📊 Fraud Detection — Overview Dashboard")
     st.markdown("---")
@@ -50,39 +46,17 @@ if page == "📊 Overview":
     col4.metric("💰 Avg Fraud Amount",   f"${avg_fraud_amt}")
     st.markdown("---")
 
-    col_a, col_b = st.columns(2)
+    st.subheader("Risk Tier Distribution")
+    tier_counts = df_filtered["RiskTier"].value_counts().reset_index()
+    tier_counts.columns = ["RiskTier", "Count"]
+    st.bar_chart(tier_counts.set_index("RiskTier"))
 
-    with col_a:
-        st.subheader("Risk Tier Distribution")
-        tier_counts = df_filtered["RiskTier"].value_counts()
-        fig1, ax1 = plt.subplots(figsize=(5, 4))
-        ax1.pie(tier_counts, labels=tier_counts.index, autopct="%1.1f%%",
-                colors=["#e74c3c", "#f39c12", "#2ecc71"], wedgeprops={"width": 0.5})
-        ax1.set_title("Risk Tier Donut")
-        st.pyplot(fig1)
-        plt.close()
-
-    with col_b:
-        st.subheader("Fraud Probability by Hour")
-        hour_data = df_filtered.groupby("HourOfDay")["FraudProbability"].mean()
-        fig2, ax2 = plt.subplots(figsize=(5, 4))
-        ax2.bar(hour_data.index, hour_data.values, color="coral")
-        ax2.set_xlabel("Hour of Day")
-        ax2.set_ylabel("Avg Fraud Probability")
-        ax2.set_title("Fraud by Hour")
-        st.pyplot(fig2)
-        plt.close()
+    st.subheader("Fraud Probability by Hour of Day")
+    hour_data = df_filtered.groupby("HourOfDay")["FraudProbability"].mean().reset_index()
+    st.bar_chart(hour_data.set_index("HourOfDay"))
 
     st.subheader("Transaction Amount Distribution")
-    fig3, ax3 = plt.subplots(figsize=(10, 4))
-    for tier, color in [("Critical Risk","#e74c3c"), ("Suspicious","#f39c12"), ("Clear","#2ecc71")]:
-        subset = df_filtered[df_filtered["RiskTier"] == tier]["TransactionAmt"]
-        ax3.hist(subset, bins=50, alpha=0.6, label=tier, color=color, log=True)
-    ax3.set_xlabel("Transaction Amount")
-    ax3.set_ylabel("Count (log)")
-    ax3.legend()
-    st.pyplot(fig3)
-    plt.close()
+    st.bar_chart(df_filtered["TransactionAmt"].value_counts().sort_index())
 
     st.subheader("📋 Risk Tier Summary")
     summary = df_filtered.groupby("RiskTier").agg(
@@ -92,9 +66,6 @@ if page == "📊 Overview":
     ).round(2).reset_index()
     st.dataframe(summary, use_container_width=True)
 
-# ==========================================
-# PAGE 2 — TRANSACTION EXPLORER
-# ==========================================
 elif page == "🔎 Transaction Explorer":
     st.title("🔎 Transaction Explorer")
     st.markdown("---")
@@ -131,20 +102,9 @@ elif page == "🔎 Transaction Explorer":
     st.dataframe(df_filtered.sort_values(sort_col, ascending=sort_asc).head(200), use_container_width=True)
 
     st.subheader("Amount vs Hour of Day")
-    fig4, ax4 = plt.subplots(figsize=(10, 5))
-    sample = df_filtered.sample(min(1000, len(df_filtered)), random_state=42)
-    sc = ax4.scatter(sample["HourOfDay"], sample["TransactionAmt"],
-                     c=sample["FraudProbability"], cmap="RdYlGn_r", alpha=0.5, s=10)
-    plt.colorbar(sc, ax=ax4, label="Fraud Probability")
-    ax4.set_xlabel("Hour of Day")
-    ax4.set_ylabel("Transaction Amount")
-    ax4.set_title("Amount vs Hour — Color = Fraud Probability")
-    st.pyplot(fig4)
-    plt.close()
+    chart_data = df_filtered[["HourOfDay", "TransactionAmt", "FraudProbability"]].sample(min(500, len(df_filtered)), random_state=42)
+    st.scatter_chart(chart_data, x="HourOfDay", y="TransactionAmt", color="FraudProbability")
 
-# ==========================================
-# PAGE 3 — SHAP EXPLAINER
-# ==========================================
 elif page == "🧠 SHAP Explainer":
     st.title("🧠 SHAP Explainer")
     st.markdown("---")
@@ -176,3 +136,14 @@ elif page == "🧠 SHAP Explainer":
                 st.warning("Transaction ID not found.")
         except:
             st.error("Valid numeric Transaction ID daalo.")
+
+    st.markdown("---")
+    st.subheader("ℹ️ Model Info")
+    st.markdown("""
+    | Step | Description |
+    |------|-------------|
+    | Model | LightGBM (best performer) |
+    | Imbalance | SMOTE applied |
+    | Features | 3 engineered features |
+    | Explainability | SHAP values |
+    """)
