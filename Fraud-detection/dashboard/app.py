@@ -11,7 +11,7 @@ def load_data():
 
 df = load_data()
 
-st.sidebar.title("🔍 Fraud Detection")
+st.sidebar.title("🔍 Credit Card Fraud Detection")
 st.sidebar.markdown("**By: Prashant Dhakad**")
 st.sidebar.markdown("---")
 
