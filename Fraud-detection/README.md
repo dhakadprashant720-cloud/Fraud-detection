@@ -1,5 +1,5 @@
 #  Real-Time Fraud Detection System
-### By: Prashant Dhakad | AI & Data Analytics | Week 4 Capstone
+### By: Prashant Dhakad | AI & Data Analytics 
 
 ---
 
